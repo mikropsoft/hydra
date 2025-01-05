@@ -4,6 +4,11 @@ from torrent_downloader import TorrentDownloader
 from http_downloader import HttpDownloader
 from profile_image_processor import ProfileImageProcessor
 import libtorrent as lt
+import logging
+
+log = logging.getLogger('werkzeug')
+
+log.setLevel(logging.ERROR)
 
 app = Flask(__name__)
 
@@ -94,7 +99,7 @@ def seed_status():
 
 @app.route("/healthcheck", methods=["GET"])
 def healthcheck():
-    return "", 200
+    return "ok", 200
 
 @app.route("/process-list", methods=["GET"])
 def process_list():
