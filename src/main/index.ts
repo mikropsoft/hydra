@@ -3,14 +3,14 @@ import updater from "electron-updater";
 import i18n from "i18next";
 import path from "node:path";
 import url from "node:url";
-import fs from "node:fs";
+import fs, { rmSync } from "node:fs";
 import { electronApp, optimizer } from "@electron-toolkit/utils";
 import { logger, WindowManager } from "@main/services";
 import { dataSource } from "@main/data-source";
 import resources from "@locales";
 import { userPreferencesRepository } from "@main/repository";
-import { knexClient, migrationConfig } from "./knex-client";
-import { databaseDirectory } from "./constants";
+import { getKnexClient, migrationConfig } from "./knex-client";
+import { databaseDirectory, databasePath } from "./constants";
 import { PythonRPC } from "./services/python-rpc";
 import { Aria2 } from "./services/aria2";
 import { loadState } from "./main";
@@ -56,14 +56,25 @@ const runMigrations = async () => {
     fs.mkdirSync(databaseDirectory, { recursive: true });
   }
 
-  await knexClient.migrate.list(migrationConfig).then((result) => {
-    logger.log(
-      "Migrations to run:",
-      result[1].map((migration) => migration.name)
-    );
-  });
+  for (let trial = 0; trial < 2; trial++) {
+    const knexClient = getKnexClient();
 
-  await knexClient.migrate.latest(migrationConfig);
+    try {
+      await knexClient.migrate.list(migrationConfig).then((result) => {
+        logger.log(
+          "Migrations to run:",
+          result[1].map((migration) => migration.name)
+        );
+      });
+
+      await knexClient.migrate.latest(migrationConfig);
+      return;
+    } catch (err) {
+      logger.log("Migrations failed to run, deleting db and trying again", err);
+      await knexClient.destroy();
+      rmSync(databasePath);
+    }
+  }
 };
 
 // This method will be called when Electron has finished
@@ -77,13 +88,9 @@ app.whenReady().then(async () => {
     return net.fetch(url.pathToFileURL(decodeURI(filePath)).toString());
   });
 
-  await runMigrations()
-    .then(() => {
-      logger.log("Migrations executed successfully");
-    })
-    .catch((err) => {
-      logger.log("Migrations failed to run:", err);
-    });
+  await runMigrations().then(() => {
+    logger.log("Migrations executed successfully");
+  });
 
   await dataSource.initialize();
 
