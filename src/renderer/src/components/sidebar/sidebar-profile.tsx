@@ -30,7 +30,7 @@ export function SidebarProfile() {
       return;
     }
 
-    navigate(`/profile/${userDetails!.id}`);
+    navigate(`/profile/${userDetails.id}`);
   };
 
   useEffect(() => {
