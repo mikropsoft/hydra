@@ -3,7 +3,7 @@ import updater from "electron-updater";
 import i18n from "i18next";
 import path from "node:path";
 import url from "node:url";
-import fs, { rmSync } from "node:fs";
+import fs from "node:fs";
 import { electronApp, optimizer } from "@electron-toolkit/utils";
 import { logger, WindowManager } from "@main/services";
 import { dataSource } from "@main/data-source";
@@ -72,7 +72,7 @@ const runMigrations = async () => {
     } catch (err) {
       logger.log("Migrations failed to run, deleting db and trying again", err);
       await knexClient.destroy();
-      rmSync(databasePath);
+      fs.rmSync(databasePath);
     }
   }
 };
